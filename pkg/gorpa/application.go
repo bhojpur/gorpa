@@ -234,7 +234,7 @@ func filepathTrimPrefix(path, prefix string) string {
 
 // loadApplicationYAML loads a application's YAML file only - does not linking or processing of any kind.
 // Probably you want to use loadApplication instead.
-func loadApplicaitonYAML(path string) (Application, error) {
+func loadApplicationYAML(path string) (Application, error) {
 	root := filepath.Join(path, "APPLICATION.yaml")
 	fc, err := ioutil.ReadFile(root)
 	if err != nil {
@@ -312,7 +312,7 @@ func loadApplication(ctx context.Context, path string, args Arguments, variant s
 		log.WithField("rootDefaultArgs", opts.ArgumentDefaults).Debug("installed root application defaults")
 	}
 
-	log.WithField("defaultArgs", application.ArgumentDefaults).Debug("applying applicaiton defaults")
+	log.WithField("defaultArgs", application.ArgumentDefaults).Debug("applying application defaults")
 	for key, val := range application.ArgumentDefaults {
 		if args == nil {
 			args = make(map[string]string)
