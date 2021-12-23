@@ -1,0 +1,10 @@
+packages:
+  - name: something
+    type: generic
+    srcs:
+      - "*.txt"
+    config:
+      commands:
+        - ["echo"]
+      test:
+        - ["echo", "testing"]
