@@ -1,3 +1,8 @@
+run:
+  skip-dirs:
+    - pkg/doublestar
+    - pkg/prettyprint
+
 linters:
   enable:
     - revive
