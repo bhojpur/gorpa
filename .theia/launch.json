@@ -1,0 +1,19 @@
+{
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Launch",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",
+      "program": "${workspaceFolder}/main.go",
+      "env": {
+          "GORPA_EXPERIMENTAL": "true",
+          "GORPA_NESTED_WORKSPACE": "true"
+      },
+      "args": ["fmt", "fixtures/nested-ws/pkg0/BUILD.yaml"]
+    }
+  ]
+}
