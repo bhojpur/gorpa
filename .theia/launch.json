@@ -11,7 +11,7 @@
       "program": "${workspaceFolder}/main.go",
       "env": {
           "GORPA_EXPERIMENTAL": "true",
-          "GORPA_NESTED_WORKSPACE": "true"
+          "GORPA_NESTED_APPLICATION": "true"
       },
       "args": ["fmt", "fixtures/nested-ws/pkg0/BUILD.yaml"]
     }
