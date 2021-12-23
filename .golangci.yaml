@@ -4,6 +4,8 @@ run:
     - pkg/prettyprint
 
 linters:
+  disable:
+    - ineffassign
   enable:
     - revive
     - staticcheck
