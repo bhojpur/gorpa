@@ -36,7 +36,7 @@ func TestScriptArgs(t *testing.T) {
 			Name:              "resovled args",
 			T:                 t,
 			Args:              []string{"run", "fixtures/scripts:echo", "-Dmsg=foobar"},
-			NoNestedApplicaiton: true,
+			NoNestedApplication: true,
 			ExitCode:          0,
 		},
 	}
