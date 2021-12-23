@@ -233,14 +233,14 @@ func filepathTrimPrefix(path, prefix string) string {
 }
 
 // loadApplicationYAML loads a application's YAML file only - does not linking or processing of any kind.
-// Probably you want to use loadApplicaiton instead.
+// Probably you want to use loadApplication instead.
 func loadApplicaitonYAML(path string) (Application, error) {
 	root := filepath.Join(path, "APPLICATION.yaml")
 	fc, err := ioutil.ReadFile(root)
 	if err != nil {
 		return Application{}, err
 	}
-	var applicaiton Application
+	var application Application
 	err = yaml.Unmarshal(fc, &application)
 	if err != nil {
 		return Application{}, err
