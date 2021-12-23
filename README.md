@@ -242,7 +242,7 @@ The Bhojpur GoRPA has some experimental support for nested applications, e.g. a 
 /application
 /application/APPLICATION.yaml
 /application/comp1/BUILD.yaml
-/application/otherApplicaiton/APPLICATION.yaml
+/application/otherApplication/APPLICATION.yaml
 /application/otherApplication/comp2/BUILD.yaml
 ```
 
@@ -259,7 +259,7 @@ otherApplication/comp2:lib
 - **nested dependencies**: dependencies from another application into a nested one is possible and behave as if all packages were in the same application, e.g. `comp1:app` could depend on `otherApplication/comp2:app`. Dependencies out of a nested application are not allowed, e.g. `otherApplication/comp2:app` cannot depend on `comp1:app`.
 - **default arguments**: there is one exception to the "standalone", that is `defaultArgs`. The `defaultArgs` of the root application override the defaults of the nested applications. This is demonstrated by the Bhojpur GoRPA's test fixtures, where the message changes depending on the application that's loaded:
   ```
-  $ export GORPA_NESTED_APPLICAITON=true
+  $ export GORPA_NESTED_APPLICATION=true
   $ gorpa run fixtures/nested-ws/wsa/pkg1:echo
   hello world
 
@@ -277,7 +277,7 @@ variables have an effect on the Bhojpur GoRPA:
 - `GORPA_BUILD_DIR`: working location of the Bhojpur GoRPA (i.e. where the actual builds happen). This location will see heavy I/O, which makes it advisable to place this on a fast SSD or in RAM.
 - `GORPA_YARN_MUTEX`: configures the mutex flag the Bhojpur GoRPA will pass to Yarn. Defaults to "network". See https://yarnpkg.com/lang/en/docs/cli/#toc-concurrency-and-mutex for possible values.
 - `GORPA_EXPERIMENTAL`: enables some of the experimental features
-- `GORPA_NESTED_APPLICATION`: enables nested applications. By default, the Bhojpur GoRPA ignores everything below another `APPLICATION.yaml`, but if this environment variable is set, then the Bhojpur GoRPA will try and link packages from the other applicaiton as if they were part of the parent one. This does not work for scripts yet.
+- `GORPA_NESTED_APPLICATION`: enables nested applications. By default, the Bhojpur GoRPA ignores everything below another `APPLICATION.yaml`, but if this environment variable is set, then the Bhojpur GoRPA will try and link packages from the other application as if they were part of the parent one. This does not work for scripts yet.
 
 # Debugging
 When a build fails, or to get an idea of how the Bhojpur GoRPA assembles dependencies, run your build with `gorpa build -c local` (local cache only) and inspect your `$GORPA_BUILD_DIR`.
@@ -294,7 +294,7 @@ Yes, run `. <(gorpa bash-completion)` to enable it. If you place this line in `.
 
 ### How can I find all packages in an Application?
 ```bash
-# list all packages in the applicaiton
+# list all packages in the application
 gorpa collect
 # list all package names using Go templates
 gorpa collect -t '{{ range $n := . }}{{ $n.Metadata.FullName }}{{"\n"}}{{end}}'
@@ -335,7 +335,7 @@ gorpa describe const some/component/name -o json | jq -r '.[] | select(.name=="f
 gorpa collect components -l someConstant
 ```
 
-### How can I export only an Applicaiton the way Bhojpur GoRPA sees it, i.e. based on the packages?
+### How can I export only an Application the way Bhojpur GoRPA sees it, i.e. based on the packages?
 ```bash
 GORPA_EXPERIMENTAL=true gorpa export --strict /some/destination
 ``
