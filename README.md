@@ -227,7 +227,7 @@ To prevent such issues, the Bhojpur GoRPA computes an _environment manifest_ whi
 The entries in that manifest depend on the package types used by that application, e.g. if only `Go` packages exist in the application, only `go version`, [GOOS and GOARCH](https://golang.org/pkg/runtime/#pkg-constants) will be part of the manifest.
 You can inspect an Application's environment manifest using `gorpa describe environment-manifest`.
 
-You can add your own entries to an Applicaiton's environment manifest in the `APPLICATION.yaml` like so:
+You can add your own entries to an Application's environment manifest in the `APPLICATION.yaml` like so:
 ```YAML
 environmentManifest:
   - name: gcc
