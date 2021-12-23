@@ -47,3 +47,6 @@ linters-settings:
       - name: error-naming
       # https://github.com/mgechev/revive/blob/master/RULES_DESCRIPTIONS.md#error-return
       - name: error-return
+
+issue:
+  exclude-use-default: false
