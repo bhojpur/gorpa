@@ -7,13 +7,13 @@ import (
 	"github.com/karrick/godirwalk"
 )
 
-// IgnoreFunc checks if a path ought to be ignored
+// IgnoreFunc checks if a path ought to be ignored.
 type IgnoreFunc func(path string) bool
 
-// IgnoreNone ignores nothing
+// IgnoreNone ignores nothing.
 var IgnoreNone IgnoreFunc = func(path string) bool { return false }
 
-// IgnoreStrings ignores all paths which contain one of the ignores substrings
+// IgnoreStrings ignores all paths which contain one of the ignores substrings.
 func IgnoreStrings(ignores []string) IgnoreFunc {
 	return func(path string) bool {
 		for _, ptn := range ignores {
