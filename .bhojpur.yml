@@ -1,0 +1,19 @@
+checkoutLocation: gorpa
+applicationLocation: gorpa
+
+image:
+  file: .bhojpur.Dockerfile
+
+# List the ports you want to expose and what to do when they are served.
+ports:
+- port: 3000
+
+# List the start up tasks. You can start them in parallel in multiple terminals.
+tasks:
+- init: |
+    git config core.hooksPath .githooks;
+    go get -v ./... && go generate -v ./...
+vscode:
+  extensions:
+    - golang.go
+    - eamodio.gitlens
