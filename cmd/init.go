@@ -146,7 +146,7 @@ func initDockerPackage(name string) ([]byte, error) {
 type: docker
 config:
   dockerfile: %s
-  image: some/imgage/in/some:repo`, name, dockerfile)), nil
+  image: some/image/in/some:repo`, name, dockerfile)), nil
 }
 
 func initYarnPackage(name string) ([]byte, error) {
