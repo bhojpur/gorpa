@@ -86,7 +86,7 @@ ADD from-some-pkg--build/hello.txt hello.txt`,
     dockerfile: Dockerfile%s
 `, pkgdeps)), 0644))
 
-			ws, err := gorpa.FindApplication(tmpdir, gorpa.Arguments{}, "")
+			ws, err := gorpa.FindApplication(tmpdir, gorpa.Arguments{}, "", "")
 			failOnErr(err)
 			pkg, ok := ws.Packages["test-pkg:docker"]
 			if !ok {
