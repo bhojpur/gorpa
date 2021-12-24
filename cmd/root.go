@@ -68,29 +68,29 @@ var (
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "gorpa",
-	Short: "A caching meta-build system",
-	Long: color.Render(`<light_yellow>The GoRPA is a heavily caching build system</> for Go, Yarn, and Docker projects. It knows three core concepts:
+	Short: "A caching meta-build system for the Bhojpur.NET Platform applications and/or services",
+	Long: color.Render(`<light_yellow>The Bhojpur GoRPA is a heavily caching build system</> for Go, Yarn, and Docker projects. It knows three core concepts:
   Application: the application is the root of all operations. All component names are relative to this path. No relevant
-             file must be placed outside the application. The application root is marked with an APPLICATION file.
+             file must be placed outside the application. The Application root is marked with an APPLICATION file.
   Component: a component is single piece of standalone software. Every folder in the application which contains a BUILD file
-             is a component. Components are identifed by their path relative to the application root.
-  Package:   packages are the buildable unit in GoRPA. Every component can define multiple packages in its build file.
-             Packages are identified by their name prefixed with the component name, e.g. some-component:pkg
+             is a component. The Components are identifed by their path relative to the application root.
+  Package:   the packages are a buildable unit in Bhojpur GoRPA. Every component can define multiple packages in its build file.
+             The Packages are identified by their name prefixed with a component name, e.g. some-component:pkg
 <white>Configuration</>
-The GoRPA is configured exclusively through the APPLICATION/BUILD files and environment variables. The following environment
-variables have an effect on GoRPA:
-       <light_blue>GORPA_APPLICATION_ROOT</>  Contains the path where to look for a APPLICATION file. Can also be set using --application.
-     <light_blue>GORPA_NESTED_APPLICATION</>  Enables (experimental) support for nested applications.
-  <light_blue>GORPA_REMOTE_CACHE_BUCKET</>  Enables remote caching using GCP buckets. Set this variable to the bucket name used for caching.
-                              When this variable is set, GoRPA expects "gsutil" in the path configured and authenticated so
-                              that it can work with the bucket.
-            <light_blue>GORPA_CACHE_DIR</>  Location of the local build cache. The directory does not have to exist yet.
-            <light_blue>GORPA_BUILD_DIR</>  Working location of GoRPA (i.e. where the actual builds happen). This location will see heavy I/O
-                              which makes it advisable to place this on a fast SSD or in RAM.
-           <light_blue>GORPA_YARN_MUTEX</>  Configures the mutex flag GoRPA will pass to yarn. Defaults to "network".
+The Bhojpur GoRPA is configured exclusively through the APPLICATION/BUILD files and environment variables. The following environment
+variables have an effect on the Bhojpur GoRPA:
+       <light_blue>GORPA_APPLICATION_ROOT</>  contains the path where to look for an APPLICATION file. It can also be set using --application.
+     <light_blue>GORPA_NESTED_APPLICATION</>  enables (experimental) support for the nested applications.
+  <light_blue>GORPA_REMOTE_CACHE_BUCKET</>  enables remote caching using GCP buckets. Set this variable to Google Cloud Storage bucket name used for caching.
+                              When this variable is set, the Bhojpur GoRPA expects "gsutil" command in the path configured and authenticated so
+                              that it can work with the Google Cloud Storage bucket.
+            <light_blue>GORPA_CACHE_DIR</>  location of the local build cache. The directory does not have to exist yet.
+            <light_blue>GORPA_BUILD_DIR</>  working location of the Bhojpur GoRPA (i.e. where the actual builds happen). This location will see heavy I/O
+                              which makes it advisable to place this on a fast SSD drive or in RAM drive.
+           <light_blue>GORPA_YARN_MUTEX</>  configures the mutex flag Bhojpur GoRPA will pass to the yarn. Defaults to "network".
                               See https://yarnpkg.com/lang/en/docs/cli/#toc-concurrency-and-mutex for possible values.
-  <light_blue>GORPA_DEFAULT_CACHE_LEVEL</>  Sets the default cache level for builds. Defaults to "remote".
-         <light_blue>GORPA_EXPERIMENTAL</>  Enables experimental GoRPA features and commands.
+  <light_blue>GORPA_DEFAULT_CACHE_LEVEL</>  sets the default cache level for builds. Defaults to "remote".
+         <light_blue>GORPA_EXPERIMENTAL</>  enables experimental Bhojpur GoRPA features and commands.
 `),
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		if verbose {
@@ -133,7 +133,7 @@ func init() {
 		applicationRoot = "."
 	}
 
-	rootCmd.PersistentFlags().StringVarP(&application, "application", "w", applicationRoot, "Application root")
+	rootCmd.PersistentFlags().StringVarP(&application, "application", "A", applicationRoot, "Application root")
 	rootCmd.PersistentFlags().StringArrayVarP(&buildArgs, "build-arg", "D", []string{}, "pass arguments to BUILD files")
 	rootCmd.PersistentFlags().StringVar(&variant, "variant", "", "selects a package variant")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "enables verbose logging")
