@@ -56,9 +56,6 @@ __gorpa_custom_func() {
 )
 
 var (
-	// version is set during the build using ldflags
-	version string = "unknown"
-
 	application string
 	buildArgs []string
 	verbose   bool
@@ -150,7 +147,7 @@ func getApplication() (gorpa.Application, error) {
 		return gorpa.FindNestedApplications(application, args, variant)
 	}
 
-	return gorpa.FindApplication(application, args, variant)
+	return gorpa.FindApplication(application, args, variant, os.Getenv("GORPA_PROVENANCE_KEYPATH"))
 }
 
 func getBuildArgs() (gorpa.Arguments, error) {
