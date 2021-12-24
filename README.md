@@ -169,7 +169,7 @@ config:
 ```
 
 ### Docker packages
-Docker packages have a default "retagging" behaviour: even when a Docker package is built already, i.e. it's GoRPA version didn't change,
+Docker packages have a default "retagging" behaviour: even when a Docker package is built already, i.e. it's GoRPA build version didn't change,
 then the Bhojpur GoRPA will ensure that an image exists with the names specified in the package config. For example, if a Docker package has `gorpa/some-package:${version}` specified,
 and `${version}` changes, but otherwise the package has been built before, then Bhojpur GoRPA will "re-tag" the previously built image to be available under `gorpa/some-package:${version}`.
 This behaviour can be disabled using `--dont-retag`.
@@ -278,6 +278,39 @@ variables have an effect on the Bhojpur GoRPA:
 - `GORPA_YARN_MUTEX`: configures the mutex flag the Bhojpur GoRPA will pass to Yarn. Defaults to "network". See https://yarnpkg.com/lang/en/docs/cli/#toc-concurrency-and-mutex for possible values.
 - `GORPA_EXPERIMENTAL`: enables some of the experimental features
 - `GORPA_NESTED_APPLICATION`: enables nested applications. By default, the Bhojpur GoRPA ignores everything below another `APPLICATION.yaml`, but if this environment variable is set, then the Bhojpur GoRPA will try and link packages from the other application as if they were part of the parent one. This does not work for scripts yet.
+
+# Provenance (SLSA) - EXPERIMENTAL
+The Bhojpur GoRPA can produce provenance information as part of a build. At the moment only [SLSA](https://slsa.dev/spec/v0.1/) is supported. This supoprt is **experimental**.
+
+Provenance generation is enabled in the `APPLICATION.yaml` file.
+```YAML
+provenance:
+  enabled: true
+  slsa: true
+```
+
+Once enabled, all packages carry an [attestation bundle](https://github.com/in-toto/attestation/blob/main/spec/bundle.md) which is compliant with the [SLSA v0.2 spec](https://slsa.dev/provenance/v0.2) in their cached archive. The bundle is complete, i.e. not only contains the attestation for the package build, but also those of its dependencies.
+
+## Dirty vs clean Git working copy
+When building from a clean Git working copy, the Bhojpur GoRPA will use a reference to the Git remote origin as [material](https://github.com/in-toto/in-toto-golang/blob/26b6a96f8a7537f27b7483e19dd68e022b179ea6/in_toto/model.go#L360) (part of the SLSA [link](https://github.com/slsa-framework/slsa/blob/main/controls/attestations.md)).
+
+## Signing attestations
+To support SLSA level 2, the Bhojpur GoRPA can sign the attestations it produces. To this end, you can provide the filepath to a key either as part of the `APPLICATION.yaml` or through the `GORPA_PROVENANCE_KEYPATH` environment variable.
+
+## Inspecting provenance
+You can inspect the generated attestation bundle by extracting it from the built and cached archive. For example:
+```bash
+# run a build
+gorpa build --save /tmp/build.tar.gz
+# extract bundle
+tar xf /tmp/build.tar.gz ./provenance-bundle.json
+# inspect the bundle
+cat provenance-bundle.json | jq -r .payload | base64 -d | jq
+```
+
+## Caveats
+- provenance is part of the Bhojpur GoRPA package version, i.e. when you enable provenance that will naturally invalidate previously built packages.
+- provenance is not supported for nested workspaces. The presence of `GORPA_NESTED_APPLICATION` will make the build fail.
 
 # Debugging
 When a build fails, or to get an idea of how the Bhojpur GoRPA assembles dependencies, run your build with `gorpa build -c local` (local cache only) and inspect your `$GORPA_BUILD_DIR`.
