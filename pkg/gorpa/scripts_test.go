@@ -73,7 +73,7 @@ func TestWorkingDirLayout(t *testing.T) {
 		// 			T:                 t,
 		// 			Args:              []string{"run", "-w", "fixtures", "//scripts:pwd-origin"},
 		// 			ExitCode:          0,
-		// 			NoNestedWorkspace: false,
+		// 			NoNestedApplication: false,
 		// 			StdoutSub: `.
 		// ./BUILD.yaml`,
 		// 		},
@@ -82,7 +82,7 @@ func TestWorkingDirLayout(t *testing.T) {
 		// 			T:                 t,
 		// 			Args:              []string{"run", "fixtures/scripts:pwd-packages"},
 		// 			ExitCode:          0,
-		// 			NoNestedWorkspace: false,
+		// 			NoNestedApplication: false,
 		// 			StdoutSub: `.
 		// ./fixtures-pkgs-generic--something`,
 		// 		},
