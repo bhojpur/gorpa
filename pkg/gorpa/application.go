@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/imdario/mergo"
+	"github.com/in-toto/in-toto-golang/in_toto"
 	"github.com/minio/highwayhash"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
@@ -36,15 +37,30 @@ type Application struct {
 	DefaultVariant      *PackageVariant     `yaml:"defaultVariant,omitempty"`
 	Variants            []*PackageVariant   `yaml:"variants,omitempty"`
 	EnvironmentManifest EnvironmentManifest `yaml:"environmentManifest,omitempty"`
+	Provenance ApplicationProvenance	`yaml:"provenance,omitempty"`
 
-	Origin          string                `yaml:"-"`
-	Components      map[string]*Component `yaml:"-"`
-	Packages        map[string]*Package   `yaml:"-"`
-	Scripts         map[string]*Script    `yaml:"-"`
-	SelectedVariant *PackageVariant       `yaml:"-"`
-	GitCommit       string                `yaml:"-"`
+	Origin          string               	`yaml:"-"`
+	Components      map[string]*Component	`yaml:"-"`
+	Packages        map[string]*Package	`yaml:"-"`
+	Scripts         map[string]*Script	`yaml:"-"`
+	SelectedVariant *PackageVariant		`yaml:"-"`
+	Git GitInfo				`yaml:"-"`
 
 	ignores []string
+}
+
+type GitInfo struct {
+	Commit string
+	Origin string
+	Dirty  bool
+}
+
+type ApplicationProvenance struct {
+	Enabled bool `yaml:"enabled"`
+	SLSA    bool `yaml:"slsa"`
+
+	KeyPath string `yaml:"key"`
+	key     *in_toto.Key
 }
 
 // EnvironmentManifest is a collection of environment manifest entries
@@ -143,6 +159,10 @@ func FindNestedApplications(path string, args Arguments, variant string) (res Ap
 		return Application{}, err
 	}
 
+	if rootWS.Provenance.Enabled {
+		return Application{}, fmt.Errorf("nested applications do not support provenance")
+	}
+
 	var ignore doublestar.IgnoreFunc
 	if fc, _ := ioutil.ReadFile(filepath.Join(path, ".gorpaignore")); len(fc) > 0 {
 		ignore = doublestar.IgnoreStrings(strings.Split(string(fc), "\n"))
@@ -187,6 +207,9 @@ func FindNestedApplications(path string, args Arguments, variant string) (res Ap
 		})
 		if err != nil {
 			return res, err
+		}
+		if sws.Provenance.Enabled {
+			return Application{}, fmt.Errorf("%s: nested applications do not support provenance", wspath)
 		}
 		loadedApplications[wspath] = &sws
 		res = sws
@@ -253,8 +276,9 @@ func loadApplicationYAML(path string) (Application, error) {
 }
 
 type loadApplicationOpts struct {
-	PrelinkModifier  func(map[string]*Package)
-	ArgumentDefaults map[string]string
+	PrelinkModifier   func(map[string]*Package)
+	ArgumentDefaults  map[string]string
+	ProvenanceKeyPath string
 }
 
 func loadApplication(ctx context.Context, path string, args Arguments, variant string, opts *loadApplicationOpts) (Application, error) {
@@ -354,10 +378,13 @@ func loadApplication(ctx context.Context, path string, args Arguments, variant s
 	}
 
 	// if this application has a Git repo at its root, resolve its commit hash
-	application.GitCommit, err = getGitCommit(application.Origin)
+	gitnfo, err := getGitInfo(application.Origin)
 	if err != nil {
-		log.WithField("application", application.Origin).WithError(err).Warn("cannot get Git commit")
-		err = nil
+		return application, xerrors.Errorf("cannot get Git info: %w", err)
+	}
+	if gitnfo != nil {
+		// if there's no Git repo at the root of the application, gitnfo will be nil
+		application.Git = *gitnfo
 	}
 
 	// now that we have all components/packages, we can link things
@@ -399,23 +426,63 @@ func loadApplication(ctx context.Context, path string, args Arguments, variant s
 		}
 	}
 
+	// if the application has provenance enabled and a keypath specified (or the loadOpts specify one),
+	// try and load the key
+	if application.Provenance.Enabled {
+		fn := opts.ProvenanceKeyPath
+		if fn == "" {
+			fn = application.Provenance.KeyPath
+		}
+		if fn != "" {
+			var key in_toto.Key
+			err = key.LoadKeyDefaults(fn)
+			if err != nil {
+				return application, xerrors.Errorf("cannot load application provenance signature key %s: %w", fn, err)
+			}
+			application.Provenance.key = &key
+		}
+	}
+
 	return application, nil
 }
 
-func getGitCommit(loc string) (string, error) {
+func getGitInfo(loc string) (*GitInfo, error) {
+
 	gitfc := filepath.Join(loc, ".git")
 	stat, err := os.Stat(gitfc)
 	if err != nil || !stat.IsDir() {
-		return "", nil
+		return nil, nil
 	}
 
+	var res GitInfo
 	cmd := exec.Command("git", "rev-parse", "HEAD")
 	cmd.Dir = gitfc
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return strings.TrimSpace(string(out)), nil
+	res.Commit = strings.TrimSpace(string(out))
+
+	cmd = exec.Command("git", "config", "--get", "remote.origin.url")
+	cmd.Dir = gitfc
+	out, err = cmd.CombinedOutput()
+	if err != nil && len(out) > 0 {
+		return nil, err
+	}
+	res.Origin = strings.TrimSpace(string(out))
+
+	cmd = exec.Command("git", "status", "--short")
+	cmd.Dir = gitfc
+	_, err = cmd.CombinedOutput()
+	if serr, ok := err.(*exec.ExitError); ok && serr.ExitCode() != 0 {
+		res.Dirty = true
+	} else if err != nil {
+		return nil, err
+	} else {
+		res.Dirty = len(out) == 0
+	}
+
+	return &res, nil
 }
 
 // buildEnvironmentManifest executes the commands of an env manifest and updates the values
@@ -469,8 +536,8 @@ func buildEnvironmentManifest(entries EnvironmentManifest, pkgtpes map[PackageTy
 
 // FindApplication looks for a APPLICATION.yaml file within the path. If multiple such files are found,
 // an error is returned.
-func FindApplication(path string, args Arguments, variant string) (Application, error) {
-	return loadApplication(context.Background(), path, args, variant, &loadApplicationOpts{})
+func FindApplication(path string, args Arguments, variant, provenanceKey string) (Application, error) {
+	return loadApplication(context.Background(), path, args, variant, &loadApplicationOpts{ProvenanceKeyPath: provenanceKey})
 }
 
 // discoverComponents discovers components in an application
@@ -618,7 +685,7 @@ func loadComponent(ctx context.Context, application *Application, path string, a
 	comp.Origin = filepath.Dir(path)
 
 	// if this component has a Git repo at its root, resolve its commit hash
-	comp.gitCommit, err = getGitCommit(comp.Origin)
+	comp.git, err = getGitInfo(comp.Origin)
 	if err != nil {
 		log.WithField("comp", comp.Name).WithError(err).Warn("cannot get Git commit")
 		err = nil
