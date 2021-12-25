@@ -6,7 +6,7 @@ builds:
   env:
   - CGO_ENABLED=0
   ldflags:
-  - -s -w -X github.com/bhojpur/gorpa/pkg/gorpa.Versio={{.Version}}-{{.ShortCommit}}
+  - -s -w -X github.com/bhojpur/gorpa/pkg/gorpa.Version={{.Version}}-{{.ShortCommit}}
 archives:
 - id: gorpa
   replacements:
