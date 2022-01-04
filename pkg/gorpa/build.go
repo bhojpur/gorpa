@@ -1,9 +1,12 @@
 package gorpa
 
 import (
+	"archive/tar"
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -47,8 +50,9 @@ const (
 
 type buildContext struct {
 	buildOptions
-	buildDir string
-	buildID  string
+	buildDir  string
+	buildID   string
+	gorpaHash string
 
 	mu                 sync.Mutex
 	newlyBuiltPackages map[string]*Package
@@ -75,7 +79,7 @@ const (
 	dockerImageNamesFiles = "imgnames.txt"
 
 	// dockerMetadataFile is the name of the file we YAML seralize the DockerPkgConfig.Metadata field to
-	// when building Docker images. We use this mechanism to produce the version manifest as part of the Bhojpur.NET Platform build.
+	// when building Docker images. We use this mechanism to produce the version manifest as part of the Gitpod build.
 	dockerMetadataFile = "metadata.yaml"
 )
 
@@ -84,7 +88,7 @@ const (
 var buildProcessVersions = map[PackageType]int{
 	YarnPackage:    7,
 	GoPackage:      2,
-	DockerPackage:  2,
+	DockerPackage:  3,
 	GenericPackage: 1,
 }
 
@@ -110,6 +114,21 @@ func newBuildContext(options buildOptions) (ctx *buildContext, err error) {
 	}
 	buildID := fmt.Sprintf("%d-%x", time.Now().UnixNano(), b)
 
+	selfFN, err := os.Executable()
+	if err != nil {
+		return nil, xerrors.Errorf("cannot compute hash of myself: %w", err)
+	}
+	self, err := os.Open(selfFN)
+	if err != nil {
+		return nil, xerrors.Errorf("cannot compute hash of myself: %w", err)
+	}
+	defer self.Close()
+	gorpaHash := sha256.New()
+	_, err = io.Copy(gorpaHash, self)
+	if err != nil {
+		return nil, xerrors.Errorf("cannot compute hash of myself: %w", err)
+	}
+
 	ctx = &buildContext{
 		buildOptions:       options,
 		buildDir:           buildDir,
@@ -118,6 +137,7 @@ func newBuildContext(options buildOptions) (ctx *buildContext, err error) {
 		pkgLockCond:        sync.NewCond(&sync.Mutex{}),
 		pkgLocks:           make(map[string]struct{}),
 		buildLimit:         buildLimit,
+		gorpaHash:          hex.EncodeToString(gorpaHash.Sum(nil)),
 	}
 
 	err = os.MkdirAll(buildDir, 0755)
@@ -633,6 +653,7 @@ func (p *Package) build(buildctx *buildContext) (err error) {
 		return err
 	}
 
+	now := time.Now()
 	if p.C.W.Provenance.Enabled {
 		sources, err = computeFileset(builddir)
 		if err != nil {
@@ -656,12 +677,7 @@ func (p *Package) build(buildctx *buildContext) (err error) {
 				return err
 			}
 		} else if bld.PostBuild != nil {
-			var postBuild fileset
-			postBuild, resultDir, err = bld.PostBuild()
-			if err != nil {
-				return err
-			}
-			subjects, err = postBuild.Sub(sources).Subjects(resultDir)
+			subjects, resultDir, err = bld.PostBuild(sources)
 			if err != nil {
 				return err
 			}
@@ -676,7 +692,7 @@ func (p *Package) build(buildctx *buildContext) (err error) {
 			}
 		}
 
-		err = writeProvenance(p, buildctx, resultDir, subjects)
+		err = writeProvenance(p, buildctx, resultDir, subjects, now)
 		if err != nil {
 			return err
 		}
@@ -701,7 +717,7 @@ type packageBuild struct {
 
 	// If PostBuild is not nil but Subjects is, PostBuild is used
 	// to compute the post build fileset for provenance subject computation.
-	PostBuild func() (fset fileset, absResultDir string, err error)
+	PostBuild func(sources fileset) (subj []in_toto.Subject, absResultDir string, err error)
 	// If Subjects is not nil it's used to compute the provenance subjects of the
 	// package build. This field takes precedence over PostBuild
 	Subjects func() ([]in_toto.Subject, error)
@@ -710,15 +726,20 @@ type packageBuild struct {
 const (
 	getYarnLockScript = `#!/bin/bash
 set -Eeuo pipefail
+
 export DIR=$(realpath $(dirname "${BASH_SOURCE[0]}"))
+
 sed 's?resolved "file://.*/?resolved "file://'$DIR'/?g' $DIR/content_yarn.lock
 `
 
 	installScript = `#!/bin/bash
 set -Eeuo pipefail
+
 export DIR=$(dirname "${BASH_SOURCE[0]}")
+
 cp $DIR/installer-package.json package.json
 $DIR/get_yarn_lock.sh > yarn.lock
+
 mkdir -p _temp_yarn_cache
 yarn install --frozenlockfile --prod --cache-folder _temp_yarn_cache
 rm -r yarn.lock _temp_yarn_cache
@@ -928,10 +949,6 @@ func (p *Package) buildYarn(buildctx *buildContext, wd, result string) (bld *pac
 			}
 		}
 
-		if p.C.W.Provenance.Enabled {
-			pkgCommands = append(pkgCommands, []string{"cp", provenanceBundleFilename, "_mirror"})
-		}
-
 		dst := filepath.Join("_mirror", fmt.Sprintf("%s.tar.gz", p.FilesystemSafeName()))
 		pkgCommands = append(pkgCommands, [][]string{
 			{"sh", "-c", fmt.Sprintf("yarn generate-lock-entry --resolved file://./%s > _mirror/content_yarn.lock", dst)},
@@ -970,10 +987,16 @@ func (p *Package) buildYarn(buildctx *buildContext, wd, result string) (bld *pac
 		return nil, xerrors.Errorf("unknown Typescript packaging: %s", cfg.Packaging)
 	}
 	res.PackageCommands = pkgCommands
-	res.PostBuild = func() (fileset, string, error) {
+	res.PostBuild = func(sources fileset) (subjects []in_toto.Subject, absResultDir string, err error) {
+		ignoreNodeModules := func(fn string) bool { return strings.Contains(fn, "node_modules/") }
 		fn := filepath.Join(wd, resultDir)
-		fset, err := computeFileset(fn)
-		return fset, fn, err
+		postBuild, err := computeFileset(fn, ignoreNodeModules)
+		if err != nil {
+			return nil, fn, err
+		}
+		subjects, err = postBuild.Sub(sources).Subjects(fn)
+		absResultDir = filepath.Join(wd, resultDir)
+		return
 	}
 
 	return res, nil
@@ -1160,7 +1183,6 @@ func (p *Package) buildDocker(buildctx *buildContext, wd, result string) (res *p
 		ef := strings.TrimSuffix(result, ".gz")
 		buildCommands = append(buildCommands, [][]string{
 			{"docker", "save", "-o", ef, version},
-			{"gzip", ef},
 		}...)
 	}
 
@@ -1169,7 +1191,17 @@ func (p *Package) buildDocker(buildctx *buildContext, wd, result string) (res *p
 	}
 
 	var pkgCommands [][]string
-	if len(cfg.Image) > 0 {
+	if len(cfg.Image) == 0 {
+		// We've already built the build artifact by exporting the archive using "docker save"
+		// At the very least we need to add the provenance bundle to that archive.
+		ef := strings.TrimSuffix(result, ".gz")
+		res.PostBuild = dockerExportPostBuild(wd, ef)
+
+		res.PackageCommands = [][]string{
+			{"tar", "fr", ef, "./" + provenanceBundleFilename},
+			{"gzip", ef},
+		}
+	} else if len(cfg.Image) > 0 {
 		for _, img := range cfg.Image {
 			pkgCommands = append(pkgCommands, [][]string{
 				{"docker", "tag", version, img},
@@ -1244,6 +1276,44 @@ func (p *Package) buildDocker(buildctx *buildContext, wd, result string) (res *p
 	return res, nil
 }
 
+func dockerExportPostBuild(builddir, result string) func(sources fileset) (subj []in_toto.Subject, absResultDir string, err error) {
+	return func(sources fileset) (subj []in_toto.Subject, absResultDir string, err error) {
+		f, err := os.Open(result)
+		if err != nil {
+			return
+		}
+		defer f.Close()
+
+		archive := tar.NewReader(f)
+		for {
+			var hdr *tar.Header
+			hdr, err = archive.Next()
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				return
+			}
+			if hdr.Typeflag != tar.TypeReg {
+				continue
+			}
+
+			hash := sha256.New()
+			_, err = io.Copy(hash, io.LimitReader(archive, hdr.Size))
+			if err != nil {
+				return nil, builddir, err
+			}
+
+			subj = append(subj, in_toto.Subject{
+				Name:   hdr.Name,
+				Digest: in_toto.DigestSet{"sha256": hex.EncodeToString(hash.Sum(nil))},
+			})
+		}
+
+		return subj, builddir, nil
+	}
+}
+
 // buildGeneric implements the build process for generic packages.
 // If you change anything in this process that's not backwards compatible, make sure you increment BuildGenericProccessVersion.
 func (p *Package) buildGeneric(buildctx *buildContext, wd, result string) (res *packageBuild, err error) {
@@ -1259,7 +1329,7 @@ func (p *Package) buildGeneric(buildctx *buildContext, wd, result string) (res *
 		// if provenance is enabled, we have to make sure we capture the bundle
 		if p.C.W.Provenance.Enabled {
 			return &packageBuild{
-				PackageCommands: [][]string{{"tar", "cfz", result, provenanceBundleFilename}},
+				PackageCommands: [][]string{{"tar", "cfz", result, "./" + provenanceBundleFilename}},
 			}, nil
 		}
 

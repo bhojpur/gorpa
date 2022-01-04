@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -32,19 +33,19 @@ import (
 // Application is the root container of all compoments. All components are named relative
 // to the origin of this application.
 type Application struct {
-	DefaultTarget       string              `yaml:"defaultTarget,omitempty"`
-	ArgumentDefaults    map[string]string   `yaml:"defaultArgs,omitempty"`
-	DefaultVariant      *PackageVariant     `yaml:"defaultVariant,omitempty"`
-	Variants            []*PackageVariant   `yaml:"variants,omitempty"`
-	EnvironmentManifest EnvironmentManifest `yaml:"environmentManifest,omitempty"`
-	Provenance ApplicationProvenance	`yaml:"provenance,omitempty"`
+	DefaultTarget       string                `yaml:"defaultTarget,omitempty"`
+	ArgumentDefaults    map[string]string     `yaml:"defaultArgs,omitempty"`
+	DefaultVariant      *PackageVariant       `yaml:"defaultVariant,omitempty"`
+	Variants            []*PackageVariant     `yaml:"variants,omitempty"`
+	EnvironmentManifest EnvironmentManifest   `yaml:"environmentManifest,omitempty"`
+	Provenance          ApplicationProvenance `yaml:"provenance,omitempty"`
 
-	Origin          string               	`yaml:"-"`
-	Components      map[string]*Component	`yaml:"-"`
-	Packages        map[string]*Package	`yaml:"-"`
-	Scripts         map[string]*Script	`yaml:"-"`
-	SelectedVariant *PackageVariant		`yaml:"-"`
-	Git GitInfo				`yaml:"-"`
+	Origin          string                `yaml:"-"`
+	Components      map[string]*Component `yaml:"-"`
+	Packages        map[string]*Package   `yaml:"-"`
+	Scripts         map[string]*Script    `yaml:"-"`
+	SelectedVariant *PackageVariant       `yaml:"-"`
+	Git             GitInfo               `yaml:"-"`
 
 	ignores []string
 }
@@ -97,6 +98,15 @@ func (mf EnvironmentManifest) Hash() (string, error) {
 	return hex.EncodeToString(hash.Sum(nil)), nil
 }
 
+// MarshalJSON marshals a built-up environment manifest into JSON
+func (mf EnvironmentManifest) MarshalJSON() ([]byte, error) {
+	res := make(map[string]string, len(mf))
+	for _, e := range mf {
+		res[e.Name] = e.Value
+	}
+	return json.Marshal(res)
+}
+
 // EnvironmentManifestEntry represents an entry in the environment manifest
 type EnvironmentManifestEntry struct {
 	Name    string   `yaml:"name"`
@@ -120,7 +130,7 @@ var defaultEnvManifestEntries = map[PackageType]EnvironmentManifest{
 	DockerPackage:  []EnvironmentManifestEntry{
 		// We do not pull the docker version here as that would make package versions dependent on a connection
 		// to a Docker daemon. As the environment manifest is resolved on application load one would always need
-		// a connection to a Docker daemon just to run e.g. gorpa collect.
+		// a connection to a Docker daemon just to run e.g. Bhojpur GoRPA collect.
 		//
 		// If you want the behaviour described above, add the following to your APPLICATION.yaml:
 		//   environmentManifest:
@@ -255,7 +265,7 @@ func filepathTrimPrefix(path, prefix string) string {
 	return strings.TrimPrefix(strings.TrimPrefix(path, prefix), string(os.PathSeparator))
 }
 
-// loadApplicationYAML loads a application's YAML file only - does not linking or processing of any kind.
+// loadApplicationYAML loads an application's YAML file only - does not linking or processing of any kind.
 // Probably you want to use loadApplication instead.
 func loadApplicationYAML(path string) (Application, error) {
 	root := filepath.Join(path, "APPLICATION.yaml")
@@ -378,7 +388,7 @@ func loadApplication(ctx context.Context, path string, args Arguments, variant s
 	}
 
 	// if this application has a Git repo at its root, resolve its commit hash
-	gitnfo, err := getGitInfo(application.Origin)
+	gitnfo, err := GetGitInfo(application.Origin)
 	if err != nil {
 		return application, xerrors.Errorf("cannot get Git info: %w", err)
 	}
@@ -429,10 +439,10 @@ func loadApplication(ctx context.Context, path string, args Arguments, variant s
 	// if the application has provenance enabled and a keypath specified (or the loadOpts specify one),
 	// try and load the key
 	if application.Provenance.Enabled {
-		fn := opts.ProvenanceKeyPath
-		if fn == "" {
-			fn = application.Provenance.KeyPath
+		if opts.ProvenanceKeyPath != "" {
+			application.Provenance.KeyPath = opts.ProvenanceKeyPath
 		}
+		fn := application.Provenance.KeyPath
 		if fn != "" {
 			var key in_toto.Key
 			err = key.LoadKeyDefaults(fn)
@@ -446,8 +456,8 @@ func loadApplication(ctx context.Context, path string, args Arguments, variant s
 	return application, nil
 }
 
-func getGitInfo(loc string) (*GitInfo, error) {
-
+// GetGitInfo returns the git status required during a Bhojpur GoRPA build
+func GetGitInfo(loc string) (*GitInfo, error) {
 	gitfc := filepath.Join(loc, ".git")
 	stat, err := os.Stat(gitfc)
 	if err != nil || !stat.IsDir() {
@@ -456,7 +466,7 @@ func getGitInfo(loc string) (*GitInfo, error) {
 
 	var res GitInfo
 	cmd := exec.Command("git", "rev-parse", "HEAD")
-	cmd.Dir = gitfc
+	cmd.Dir = loc
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return nil, err
@@ -464,7 +474,7 @@ func getGitInfo(loc string) (*GitInfo, error) {
 	res.Commit = strings.TrimSpace(string(out))
 
 	cmd = exec.Command("git", "config", "--get", "remote.origin.url")
-	cmd.Dir = gitfc
+	cmd.Dir = loc
 	out, err = cmd.CombinedOutput()
 	if err != nil && len(out) > 0 {
 		return nil, err
@@ -472,14 +482,17 @@ func getGitInfo(loc string) (*GitInfo, error) {
 	res.Origin = strings.TrimSpace(string(out))
 
 	cmd = exec.Command("git", "status", "--short")
-	cmd.Dir = gitfc
-	_, err = cmd.CombinedOutput()
-	if serr, ok := err.(*exec.ExitError); ok && serr.ExitCode() != 0 {
+	cmd.Dir = loc
+	out, err = cmd.CombinedOutput()
+	if serr, ok := err.(*exec.ExitError); ok && serr.ExitCode() != 128 {
+		// git status --short seems to exit with 128 all the time - that's ok, but we need to account for that.
+		log.WithField("exitCode", serr.ExitCode()).Debug("git status --short exited with failed exit code. Working copy is dirty.")
 		res.Dirty = true
-	} else if err != nil {
+	} else if _, ok := err.(*exec.ExitError); !ok && err != nil {
 		return nil, err
-	} else {
-		res.Dirty = len(out) == 0
+	} else if len(strings.TrimSpace(string(out))) != 0 {
+		res.Dirty = true
+		log.WithField("out", string(out)).Debug("`git status --short` produced output. Working copy is dirty.")
 	}
 
 	return &res, nil
@@ -540,7 +553,7 @@ func FindApplication(path string, args Arguments, variant, provenanceKey string)
 	return loadApplication(context.Background(), path, args, variant, &loadApplicationOpts{ProvenanceKeyPath: provenanceKey})
 }
 
-// discoverComponents discovers components in an application
+// discoverComponents discovers components in a Application
 func discoverComponents(ctx context.Context, application *Application, args Arguments, variant *PackageVariant, opts *loadApplicationOpts) ([]*Component, error) {
 	defer trace.StartRegion(context.Background(), "discoverComponents").End()
 
@@ -685,7 +698,7 @@ func loadComponent(ctx context.Context, application *Application, path string, a
 	comp.Origin = filepath.Dir(path)
 
 	// if this component has a Git repo at its root, resolve its commit hash
-	comp.git, err = getGitInfo(comp.Origin)
+	comp.git, err = GetGitInfo(comp.Origin)
 	if err != nil {
 		log.WithField("comp", comp.Name).WithError(err).Warn("cannot get Git commit")
 		err = nil
