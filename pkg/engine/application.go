@@ -1,4 +1,24 @@
-package gorpa
+package engine
+
+// Copyright (c) 2018 Bhojpur Consulting Private Limited, India. All rights reserved.
+
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
 
 import (
 	"bytes"
@@ -148,13 +168,13 @@ var defaultEnvManifestEntries = map[PackageType]EnvironmentManifest{
 }
 
 // ShouldIgnoreComponent returns true if a file should be ignored for a component listing
-func (ws *Application) ShouldIgnoreComponent(path string) bool {
-	return ws.ShouldIgnoreSource(path)
+func (ba *Application) ShouldIgnoreComponent(path string) bool {
+	return ba.ShouldIgnoreSource(path)
 }
 
 // ShouldIgnoreSource returns true if a file should be ignored for a source listing
-func (ws *Application) ShouldIgnoreSource(path string) bool {
-	for _, ptn := range ws.ignores {
+func (ba *Application) ShouldIgnoreSource(path string) bool {
+	for _, ptn := range ba.ignores {
 		if strings.Contains(path, ptn) {
 			return true
 		}
@@ -164,12 +184,12 @@ func (ws *Application) ShouldIgnoreSource(path string) bool {
 
 // FindNestedApplications loads nested applications
 func FindNestedApplications(path string, args Arguments, variant string) (res Application, err error) {
-	rootWS, err := loadApplicationYAML(path)
+	rootBA, err := loadApplicationYAML(path)
 	if err != nil {
 		return Application{}, err
 	}
 
-	if rootWS.Provenance.Enabled {
+	if rootBA.Provenance.Enabled {
 		return Application{}, fmt.Errorf("nested applications do not support provenance")
 	}
 
@@ -178,28 +198,28 @@ func FindNestedApplications(path string, args Arguments, variant string) (res Ap
 		ignore = doublestar.IgnoreStrings(strings.Split(string(fc), "\n"))
 	}
 
-	wss, err := doublestar.Glob(path, "**/APPLICATION.yaml", ignore)
+	bas, err := doublestar.Glob(path, "**/APPLICATION.yaml", ignore)
 	if err != nil {
 		return
 	}
 
 	// deepest applications first
-	sort.Slice(wss, func(i, j int) bool {
-		return strings.Count(wss[i], string(os.PathSeparator)) > strings.Count(wss[j], string(os.PathSeparator))
+	sort.Slice(bas, func(i, j int) bool {
+		return strings.Count(bas[i], string(os.PathSeparator)) > strings.Count(bas[j], string(os.PathSeparator))
 	})
 
 	loadedApplications := make(map[string]*Application)
-	for _, wspath := range wss {
-		wspath = strings.TrimSuffix(strings.TrimSuffix(wspath, "APPLICATION.yaml"), "/")
-		log := log.WithField("wspath", wspath)
+	for _, bapath := range bas {
+		bapath = strings.TrimSuffix(strings.TrimSuffix(bapath, "APPLICATION.yaml"), "/")
+		log := log.WithField("bapath", bapath)
 		log.Debug("loading (possibly nested) application")
 
-		sws, err := loadApplication(context.Background(), wspath, args, variant, &loadApplicationOpts{
+		sba, err := loadApplication(context.Background(), bapath, args, variant, &loadApplicationOpts{
 			PrelinkModifier: func(packages map[string]*Package) {
-				for otherloc, otherws := range loadedApplications {
-					relativeOrigin := filepathTrimPrefix(otherloc, wspath)
+				for otherloc, otherba := range loadedApplications {
+					relativeOrigin := filepathTrimPrefix(otherloc, bapath)
 
-					for k, p := range otherws.Packages {
+					for k, p := range otherba.Packages {
 						var otherKey string
 						if strings.HasPrefix(k, "//") {
 							otherKey = fmt.Sprintf("%s%s", relativeOrigin, strings.TrimPrefix(k, "//"))
@@ -213,16 +233,16 @@ func FindNestedApplications(path string, args Arguments, variant string) (res Ap
 					}
 				}
 			},
-			ArgumentDefaults: rootWS.ArgumentDefaults,
+			ArgumentDefaults: rootBA.ArgumentDefaults,
 		})
 		if err != nil {
 			return res, err
 		}
-		if sws.Provenance.Enabled {
-			return Application{}, fmt.Errorf("%s: nested applications do not support provenance", wspath)
+		if sba.Provenance.Enabled {
+			return Application{}, fmt.Errorf("%s: nested applications do not support provenance", bapath)
 		}
-		loadedApplications[wspath] = &sws
-		res = sws
+		loadedApplications[bapath] = &sba
+		res = sba
 	}
 
 	// now that we've loaded and linked the main application, we need to fix the location names and indices
@@ -239,10 +259,10 @@ func FindNestedApplications(path string, args Arguments, variant string) (res Ap
 		newComps[name] = pkg.C
 		log.WithField("origin", pkg.C.Origin).WithField("name", name).Debug("renamed component")
 	}
-	for otherloc, otherws := range loadedApplications {
+	for otherloc, otherba := range loadedApplications {
 		relativeOrigin := filepathTrimPrefix(otherloc, path)
 
-		for k, p := range otherws.Scripts {
+		for k, p := range otherba.Scripts {
 			var otherKey string
 			if strings.HasPrefix(k, "//") {
 				otherKey = fmt.Sprintf("%s%s", relativeOrigin, strings.TrimPrefix(k, "//"))
@@ -321,12 +341,12 @@ func loadApplication(ctx context.Context, path string, args Arguments, variant s
 		}
 		ignores = strings.Split(string(fc), "\n")
 	}
-	otherWS, err := doublestar.Glob(application.Origin, "**/APPLICATION.yaml", application.ShouldIgnoreSource)
+	otherBA, err := doublestar.Glob(application.Origin, "**/APPLICATION.yaml", application.ShouldIgnoreSource)
 	if err != nil {
 		return Application{}, err
 	}
-	for _, ows := range otherWS {
-		dir := filepath.Dir(ows)
+	for _, oba := range otherBA {
+		dir := filepath.Dir(oba)
 		if dir == application.Origin {
 			continue
 		}

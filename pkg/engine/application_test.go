@@ -1,4 +1,24 @@
-package gorpa_test
+package engine_test
+
+// Copyright (c) 2018 Bhojpur Consulting Private Limited, India. All rights reserved.
+
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
 
 import (
 	"encoding/json"
@@ -15,61 +35,61 @@ func TestFixtureLoadApplication(t *testing.T) {
 
 	tests := []*CommandFixtureTest{
 		{
-			Name:              "single application packages",
-			T:                 t,
-			Args:              []string{"collect", "-w", "fixtures/nested-ws/wsa"},
+			Name:                "single application packages",
+			T:                   t,
+			Args:                []string{"collect", "-a", "fixtures/nested-ba/baa"},
 			NoNestedApplication: true,
-			ExitCode:          0,
-			StdoutSub:         "pkg1:app",
+			ExitCode:            0,
+			StdoutSub:           "pkg1:app",
 		},
 		{
-			Name:              "application components",
-			T:                 t,
-			Args:              []string{"collect", "-w", "fixtures/nested-ws/wsa", "components"},
+			Name:                "application components",
+			T:                   t,
+			Args:                []string{"collect", "-a", "fixtures/nested-ba/baa", "components"},
 			NoNestedApplication: true,
-			ExitCode:          0,
-			StdoutSub:         "//\npkg0\npkg1",
+			ExitCode:            0,
+			StdoutSub:           "//\npkg0\npkg1",
 		},
 		{
-			Name:              "ignore nested applications",
-			T:                 t,
-			Args:              []string{"collect", "-w", "fixtures/nested-ws", "components"},
+			Name:                "ignore nested applications",
+			T:                   t,
+			Args:                []string{"collect", "-a", "fixtures/nested-ba", "components"},
 			NoNestedApplication: true,
-			ExitCode:          1,
-			StderrSub:         "pkg0:app: package \\\"wsa/pkg0:app\\\" is unknown",
+			ExitCode:            1,
+			StderrSub:           "pkg0:app: package \\\"baa/pkg0:app\\\" is unknown",
 		},
 		{
 			Name:      "nested application packages",
 			T:         t,
-			Args:      []string{"collect", "-w", "fixtures/nested-ws"},
+			Args:      []string{"collect", "-a", "fixtures/nested-ba"},
 			StdoutSub: "pkg0:app",
 			ExitCode:  0,
 		},
 		{
 			Name:      "nested application components",
 			T:         t,
-			Args:      []string{"collect", "components", "-w", "fixtures/nested-ws"},
+			Args:      []string{"collect", "components", "-a", "fixtures/nested-ba"},
 			StdoutSub: "pkg0",
 			ExitCode:  0,
 		},
 		{
 			Name:      "nested application scripts",
 			T:         t,
-			Args:      []string{"collect", "scripts", "-w", "fixtures/nested-ws"},
-			StdoutSub: "wsa/pkg1:echo\nwsa:echo",
+			Args:      []string{"collect", "scripts", "-a", "fixtures/nested-ba"},
+			StdoutSub: "baa/pkg1:echo\nbaa:echo",
 			ExitCode:  0,
 		},
 		{
 			Name:      "nested application override default args",
 			T:         t,
-			Args:      []string{"run", "-w", "fixtures/nested-ws", "wsa/pkg1:echo"},
+			Args:      []string{"run", "-a", "fixtures/nested-ba", "baa/pkg1:echo"},
 			StdoutSub: "hello root",
 			ExitCode:  0,
 		},
 		{
 			Name: "environment manifest",
 			T:    t,
-			Args: []string{"describe", "-w", "fixtures/nested-ws/wsa", "environment-manifest"},
+			Args: []string{"describe", "-a", "fixtures/nested-ba/baa", "environment-manifest"},
 			Eval: func(t *testing.T, stdout, stderr string) {
 				for _, k := range []string{"os", "arch", "foobar"} {
 					if !strings.Contains(stdout, fmt.Sprintf("%s: ", k)) {
@@ -104,8 +124,8 @@ func TestPackageDefinition(t *testing.T) {
 			Name: "def change changes version",
 			Layouts: []map[string]string{
 				{
-					"APPLICATION.yaml":  "",
-					"pkg1/BUILD.yaml": "packages:\n- name: foo\n  type: generic\n  srcs:\n  - \"doesNotExist\"",
+					"APPLICATION.yaml": "",
+					"pkg1/BUILD.yaml":  "packages:\n- name: foo\n  type: generic\n  srcs:\n  - \"doesNotExist\"",
 				},
 				{
 					"pkg1/BUILD.yaml": "packages:\n- name: foo\n  type: generic\n  srcs:\n  - \"alsoDoesNotExist\"",
@@ -115,7 +135,7 @@ func TestPackageDefinition(t *testing.T) {
 				func(t *testing.T, loc string, state map[string]string) *CommandFixtureTest {
 					return &CommandFixtureTest{
 						T:    t,
-						Args: []string{"describe", "-w", loc, "-o", "json", "pkg1:foo"},
+						Args: []string{"describe", "-a", loc, "-o", "json", "pkg1:foo"},
 						Eval: func(t *testing.T, stdout, stderr string) {
 							var dest pkginfo
 							err := json.Unmarshal([]byte(stdout), &dest)
@@ -130,7 +150,7 @@ func TestPackageDefinition(t *testing.T) {
 				func(t *testing.T, loc string, state map[string]string) *CommandFixtureTest {
 					return &CommandFixtureTest{
 						T:    t,
-						Args: []string{"describe", "-w", loc, "-o", "json", "pkg1:foo"},
+						Args: []string{"describe", "-a", loc, "-o", "json", "pkg1:foo"},
 						Eval: func(t *testing.T, stdout, stderr string) {
 							var dest pkginfo
 							err := json.Unmarshal([]byte(stdout), &dest)
@@ -150,8 +170,8 @@ func TestPackageDefinition(t *testing.T) {
 			Name: "comp change doesnt change version",
 			Layouts: []map[string]string{
 				{
-					"APPLICATION.yaml":  "",
-					"pkg1/BUILD.yaml": "packages:\n- name: foo\n  type: generic\n  srcs:\n  - \"doesNotExist\"",
+					"APPLICATION.yaml": "",
+					"pkg1/BUILD.yaml":  "packages:\n- name: foo\n  type: generic\n  srcs:\n  - \"doesNotExist\"",
 				},
 				{
 					"pkg1/BUILD.yaml": "const:\n  foobar: baz\npackages:\n- name: foo\n  type: generic\n  srcs:\n  - \"doesNotExist\"",
@@ -161,7 +181,7 @@ func TestPackageDefinition(t *testing.T) {
 				func(t *testing.T, loc string, state map[string]string) *CommandFixtureTest {
 					return &CommandFixtureTest{
 						T:    t,
-						Args: []string{"describe", "-w", loc, "-o", "json", "pkg1:foo"},
+						Args: []string{"describe", "-a", loc, "-o", "json", "pkg1:foo"},
 						Eval: func(t *testing.T, stdout, stderr string) {
 							var dest pkginfo
 							err := json.Unmarshal([]byte(stdout), &dest)
@@ -176,7 +196,7 @@ func TestPackageDefinition(t *testing.T) {
 				func(t *testing.T, loc string, state map[string]string) *CommandFixtureTest {
 					return &CommandFixtureTest{
 						T:    t,
-						Args: []string{"describe", "-w", loc, "-o", "json", "pkg1:foo"},
+						Args: []string{"describe", "-a", loc, "-o", "json", "pkg1:foo"},
 						Eval: func(t *testing.T, stdout, stderr string) {
 							var dest pkginfo
 							err := json.Unmarshal([]byte(stdout), &dest)
@@ -196,8 +216,8 @@ func TestPackageDefinition(t *testing.T) {
 			Name: "dependency def change changes version",
 			Layouts: []map[string]string{
 				{
-					"APPLICATION.yaml":  "",
-					"pkg1/BUILD.yaml": "packages:\n- name: foo\n  type: generic\n  srcs:\n  - \"doesNotExist\"\n- name: bar\n  type: generic\n  srcs:\n  - \"doesNotExist\"\n  deps:\n  - :foo",
+					"APPLICATION.yaml": "",
+					"pkg1/BUILD.yaml":  "packages:\n- name: foo\n  type: generic\n  srcs:\n  - \"doesNotExist\"\n- name: bar\n  type: generic\n  srcs:\n  - \"doesNotExist\"\n  deps:\n  - :foo",
 				},
 				{
 					"pkg1/BUILD.yaml": "packages:\n- name: foo\n  type: generic\n  srcs:\n  - \"alsoDoesNotExist\"\n- name: bar\n  type: generic\n  srcs:\n  - \"doesNotExist\"\n  deps:\n  - :foo",
@@ -207,7 +227,7 @@ func TestPackageDefinition(t *testing.T) {
 				func(t *testing.T, loc string, state map[string]string) *CommandFixtureTest {
 					return &CommandFixtureTest{
 						T:    t,
-						Args: []string{"describe", "-w", loc, "-o", "json", "pkg1:foo"},
+						Args: []string{"describe", "-a", loc, "-o", "json", "pkg1:foo"},
 						Eval: func(t *testing.T, stdout, stderr string) {
 							var dest pkginfo
 							err := json.Unmarshal([]byte(stdout), &dest)
@@ -222,7 +242,7 @@ func TestPackageDefinition(t *testing.T) {
 				func(t *testing.T, loc string, state map[string]string) *CommandFixtureTest {
 					return &CommandFixtureTest{
 						T:    t,
-						Args: []string{"describe", "-w", loc, "-o", "json", "pkg1:bar"},
+						Args: []string{"describe", "-a", loc, "-o", "json", "pkg1:bar"},
 						Eval: func(t *testing.T, stdout, stderr string) {
 							var dest pkginfo
 							err := json.Unmarshal([]byte(stdout), &dest)
@@ -242,8 +262,8 @@ func TestPackageDefinition(t *testing.T) {
 			Name: "build args dont change version",
 			Layouts: []map[string]string{
 				{
-					"APPLICATION.yaml":  "",
-					"pkg1/BUILD.yaml": "packages:\n- name: foo\n  type: generic\n  srcs:\n  - \"doesNotExist\"\n  config:\n    commands:\n    - [\"echo\", \"${msg}\"]",
+					"APPLICATION.yaml": "",
+					"pkg1/BUILD.yaml":  "packages:\n- name: foo\n  type: generic\n  srcs:\n  - \"doesNotExist\"\n  config:\n    commands:\n    - [\"echo\", \"${msg}\"]",
 				},
 				{},
 			},
@@ -251,7 +271,7 @@ func TestPackageDefinition(t *testing.T) {
 				func(t *testing.T, loc string, state map[string]string) *CommandFixtureTest {
 					return &CommandFixtureTest{
 						T:    t,
-						Args: []string{"describe", "-Dmsg=foo", "-w", loc, "-o", "json", "pkg1:foo"},
+						Args: []string{"describe", "-Dmsg=foo", "-a", loc, "-o", "json", "pkg1:foo"},
 						Eval: func(t *testing.T, stdout, stderr string) {
 							var dest pkginfo
 							err := json.Unmarshal([]byte(stdout), &dest)
@@ -266,7 +286,7 @@ func TestPackageDefinition(t *testing.T) {
 				func(t *testing.T, loc string, state map[string]string) *CommandFixtureTest {
 					return &CommandFixtureTest{
 						T:    t,
-						Args: []string{"describe", "-Dmsg=bar", "-w", loc, "-o", "json", "pkg1:foo"},
+						Args: []string{"describe", "-Dmsg=bar", "-a", loc, "-o", "json", "pkg1:foo"},
 						Eval: func(t *testing.T, stdout, stderr string) {
 							var dest pkginfo
 							err := json.Unmarshal([]byte(stdout), &dest)

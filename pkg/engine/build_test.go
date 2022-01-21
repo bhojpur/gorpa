@@ -1,4 +1,4 @@
-package cmd
+package engine
 
 // Copyright (c) 2018 Bhojpur Consulting Private Limited, India. All rights reserved.
 
@@ -21,45 +21,25 @@ package cmd
 // THE SOFTWARE.
 
 import (
-	log "github.com/sirupsen/logrus"
-	"github.com/spf13/cobra"
-
-	"github.com/bhojpur/gorpa/pkg/prettyprint"
+	"testing"
 )
 
-// describeConstCmd represents the describeTree command
-var describeConstCmd = &cobra.Command{
-	Use:   "const",
-	Short: "Prints the value of a component constant",
-	Run: func(cmd *cobra.Command, args []string) {
-		comp, pkg, _, exists := getTarget(args, false)
-		if !exists {
-			log.Fatal("const needs a component")
-		}
-		if comp == nil && pkg != nil {
-			comp = pkg.C
-		}
+func TestCodecovComponentName(t *testing.T) {
+	tests := []struct {
+		Test     string
+		Package  string
+		Expected string
+	}{
+		{"valid package format", "components/ee/bp-scheduler", "components-ee-bp-scheduler-coverage.out"},
+		{"lower case", "COMPONENTS/bhojpur-cli:app", "components-bhojpur-cli-app-coverage.out"},
+		{"special character", "components/~ü:app", "components-app-coverage.out"},
+		{"with numbers", "components/1icens0r:app", "components-1icens0r-app-coverage.out"},
+	}
 
-		type constDesc struct {
-			Name  string `json:"name" yaml:"name"`
-			Value string `json:"value" yaml:"value"`
+	for _, test := range tests {
+		name := codecovComponentName(test.Package)
+		if name != test.Expected {
+			t.Errorf("%s: expected: %v, actual: %v", test.Test, test.Expected, name)
 		}
-
-		w := getWriterFromFlags(cmd)
-		if w.Format == prettyprint.TemplateFormat && w.FormatString == "" {
-			w.FormatString = `{{ range . }}{{ .Name }}:{{"\t"}}{{ .Value }}{{"\n"}}{{ end }}`
-		}
-
-		desc := make([]constDesc, 0, len(comp.Constants))
-		for k, v := range comp.Constants {
-			desc = append(desc, constDesc{Name: k, Value: v})
-		}
-		//nolint:errcheck
-		w.Write(desc)
-	},
-}
-
-func init() {
-	describeCmd.AddCommand(describeConstCmd)
-	addFormatFlags(describeConstCmd)
+	}
 }

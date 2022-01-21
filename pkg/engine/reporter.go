@@ -1,4 +1,24 @@
-package gorpa
+package engine
+
+// Copyright (c) 2018 Bhojpur Consulting Private Limited, India. All rights reserved.
+
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
 
 import (
 	"fmt"
@@ -175,20 +195,20 @@ func getRunPrefix(p *Package) string {
 	return color.Gray.Render(fmt.Sprintf("[%s] ", p.FullName()))
 }
 
-// NewWerftReporter craetes a new werft compatible reporter
-func NewWerftReporter() *WerftReporter {
-	return &WerftReporter{
+// NewGorpaReporter craetes a new GoRPA compatible reporter
+func NewGorpaReporter() *GorpaReporter {
+	return &GorpaReporter{
 		ConsoleReporter: NewConsoleReporter(),
 	}
 }
 
-// WerftReporter works like the console reporter but adds werft output
-type WerftReporter struct {
+// GorpaReporter works like the console reporter but adds GoRPA output
+type GorpaReporter struct {
 	*ConsoleReporter
 }
 
 // BuildStarted is called when the build of a package is started by the user.
-func (r *WerftReporter) BuildStarted(pkg *Package, status map[*Package]PackageBuildStatus) {
+func (r *GorpaReporter) BuildStarted(pkg *Package, status map[*Package]PackageBuildStatus) {
 	r.ConsoleReporter.BuildStarted(pkg, status)
 
 	for p, s := range status {
@@ -204,7 +224,7 @@ func (r *WerftReporter) BuildStarted(pkg *Package, status map[*Package]PackageBu
 }
 
 // PackageBuildFinished is called when the package build has finished.
-func (r *WerftReporter) PackageBuildFinished(pkg *Package, err error) {
+func (r *GorpaReporter) PackageBuildFinished(pkg *Package, err error) {
 	r.ConsoleReporter.PackageBuildFinished(pkg, err)
 
 	if cfg, ok := pkg.Config.(DockerPkgConfig); ok && pkg.Type == DockerPackage {

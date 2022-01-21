@@ -1,4 +1,24 @@
-package gorpa_test
+package engine_test
+
+// Copyright (c) 2018 Bhojpur Consulting Private Limited, India. All rights reserved.
+
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
 
 import (
 	// "path/filepath"
@@ -26,18 +46,18 @@ func TestScriptArgs(t *testing.T) {
 
 	tests := []*CommandFixtureTest{
 		{
-			Name:              "unresolved arg",
-			T:                 t,
-			Args:              []string{"run", "fixtures/scripts:echo"},
+			Name:                "unresolved arg",
+			T:                   t,
+			Args:                []string{"run", "fixtures/scripts:echo"},
 			NoNestedApplication: true,
-			ExitCode:          1,
+			ExitCode:            1,
 		},
 		{
-			Name:              "resovled args",
-			T:                 t,
-			Args:              []string{"run", "fixtures/scripts:echo", "-Dmsg=foobar"},
+			Name:                "resovled args",
+			T:                   t,
+			Args:                []string{"run", "fixtures/scripts:echo", "-Dmsg=foobar"},
 			NoNestedApplication: true,
-			ExitCode:          0,
+			ExitCode:            0,
 		},
 	}
 
@@ -51,19 +71,19 @@ func TestWorkingDirLayout(t *testing.T) {
 
 	tests := []*CommandFixtureTest{
 		{
-			Name:              "origin",
-			T:                 t,
-			Args:              []string{"run", "fixtures/scripts:pwd-origin"},
-			ExitCode:          0,
+			Name:                "origin",
+			T:                   t,
+			Args:                []string{"run", "fixtures/scripts:pwd-origin"},
+			ExitCode:            0,
 			NoNestedApplication: true,
 			StdoutSub: `.
 ./BUILD.yaml`,
 		},
 		{
-			Name:              "packages",
-			T:                 t,
-			Args:              []string{"run", "fixtures/scripts:pwd-packages"},
-			ExitCode:          0,
+			Name:                "packages",
+			T:                   t,
+			Args:                []string{"run", "fixtures/scripts:pwd-packages"},
+			ExitCode:            0,
 			NoNestedApplication: true,
 			StdoutSub: `.
 ./fixtures-pkgs-generic--something`,
@@ -71,7 +91,7 @@ func TestWorkingDirLayout(t *testing.T) {
 		// 		{
 		// 			Name:              "origin nested",
 		// 			T:                 t,
-		// 			Args:              []string{"run", "-w", "fixtures", "//scripts:pwd-origin"},
+		// 			Args:              []string{"run", "-a", "fixtures", "//scripts:pwd-origin"},
 		// 			ExitCode:          0,
 		// 			NoNestedApplication: false,
 		// 			StdoutSub: `.
@@ -94,16 +114,16 @@ func TestWorkingDirLayout(t *testing.T) {
 }
 
 type CommandFixtureTest struct {
-	Name              string
-	T                 *testing.T
-	Args              []string
-	ExitCode          int
+	Name                string
+	T                   *testing.T
+	Args                []string
+	ExitCode            int
 	NoNestedApplication bool
-	StdoutSub         string
-	NoStdoutSub       string
-	StderrSub         string
-	NoStderrSub       string
-	Eval              func(t *testing.T, stdout, stderr string)
+	StdoutSub           string
+	NoStdoutSub         string
+	StderrSub           string
+	NoStderrSub         string
+	Eval                func(t *testing.T, stdout, stderr string)
 }
 
 // Run executes the fixture test - do not forget to call this one

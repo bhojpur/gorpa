@@ -2,9 +2,9 @@ packages:
 - name: app
   type: generic
   deps:
-  - wsa/pkg0:app
-  - wsa/pkg1:app
-  - wsa:app
+  - baa/pkg0:app
+  - baa/pkg1:app
+  - baa:app
   config:
     commands:
     - ["echo"]

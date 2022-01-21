@@ -1,3 +1,6 @@
 {
-    "go.lintTool": "golangci-lint"
+    "go.lintTool": "golangci-lint",
+    "yaml.schemas": {
+        "https://json.schemastore.org/github-workflow.json": "file:///Volumes/Software/bhojpur/net/gorpa/.github/workflows/build.yaml"
+    }
 }

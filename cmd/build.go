@@ -1,5 +1,25 @@
 package cmd
 
+// Copyright (c) 2018 Bhojpur Consulting Private Limited, India. All rights reserved.
+
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
+
 import (
 	"context"
 	"fmt"
@@ -11,7 +31,7 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"github.com/bhojpur/gorpa/pkg/gorpa"
+	gorpa "github.com/bhojpur/gorpa/pkg/engine"
 	"github.com/gookit/color"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -166,7 +186,7 @@ func addBuildFlags(cmd *cobra.Command) {
 	cmd.Flags().StringSlice("add-remote-cache", []string{}, "Configures additional (pull-only) remote caches")
 	cmd.Flags().Bool("dry-run", false, "Don't actually build but stop after showing what would need to be built")
 	cmd.Flags().String("dump-plan", "", "Writes the build plan as JSON to a file. Use \"-\" to write the build plan to stderr.")
-	cmd.Flags().Bool("werft", false, "Produce werft CI compatible output")
+	cmd.Flags().Bool("gorpa", false, "Produce GoRPA CI compatible output")
 	cmd.Flags().Bool("dont-test", false, "Disable all package-level tests (defaults to false)")
 	cmd.Flags().Bool("dont-retag", false, "Disable Docker image re-tagging (defaults to false)")
 	cmd.Flags().UintP("max-concurrent-tasks", "j", uint(runtime.NumCPU()), "Limit the number of max concurrent build tasks - set to 0 to disable the limit")
@@ -246,13 +266,13 @@ func getBuildOpts(cmd *cobra.Command) ([]gorpa.BuildOption, *gorpa.FilesystemCac
 		}
 	}
 
-	werftlog, err := cmd.Flags().GetBool("werft")
+	gorpalog, err := cmd.Flags().GetBool("gorpa")
 	if err != nil {
 		log.Fatal(err)
 	}
 	var reporter gorpa.Reporter
-	if werftlog {
-		reporter = gorpa.NewWerftReporter()
+	if gorpalog {
+		reporter = gorpa.NewGorpaReporter()
 	} else {
 		reporter = gorpa.NewConsoleReporter()
 	}

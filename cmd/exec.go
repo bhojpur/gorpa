@@ -1,5 +1,25 @@
 package cmd
 
+// Copyright (c) 2018 Bhojpur Consulting Private Limited, India. All rights reserved.
+
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
+
 import (
 	"context"
 	"fmt"
@@ -14,7 +34,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	"github.com/bhojpur/gorpa/pkg/gorpa"
+	gorpa "github.com/bhojpur/gorpa/pkg/engine"
 )
 
 // execCmd represents the version command
@@ -34,7 +54,7 @@ Example use:
   # execute go build in all direct Go dependencies when any of the relevant source files changes:
   gorpa exec --package some/other:package --dependencies --filter-type go --parallel --watch -- go build
   # run tsc watch for all dependent yarn packages (once per component origin):
-  gorpa exec --package some/other:package --transitive-dependencies --filter-type yarn --parallel -- tsc -w --preserveWatchOutput
+  gorpa exec --package some/other:package --transitive-dependencies --filter-type yarn --parallel -- tsc -a --preserveWatchOutput
 `,
 	Args: cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
@@ -48,22 +68,22 @@ Example use:
 			parallel, _         = cmd.Flags().GetBool("parallel")
 		)
 
-		ws, err := getApplication()
+		ba, err := getApplication()
 		if err != nil {
 			log.WithError(err).Fatal("cannot load application")
 		}
 
 		var pkgs map[*gorpa.Package]struct{}
 		if len(packages) == 0 {
-			pkgs = make(map[*gorpa.Package]struct{}, len(ws.Packages))
-			for _, p := range ws.Packages {
+			pkgs = make(map[*gorpa.Package]struct{}, len(ba.Packages))
+			for _, p := range ba.Packages {
 				pkgs[p] = struct{}{}
 			}
 		} else {
 			pkgs = make(map[*gorpa.Package]struct{}, len(packages))
 			for _, pn := range packages {
-				pn := absPackageName(ws, pn)
-				p, ok := ws.Packages[pn]
+				pn := absPackageName(ba, pn)
+				p, ok := ba.Packages[pn]
 				if !ok {
 					log.WithField("package", pn).Fatal("package not found")
 				}
