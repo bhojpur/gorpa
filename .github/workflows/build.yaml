@@ -83,8 +83,6 @@ jobs:
       - name: Download and vendor all required packages
         run: |
           go mod download
-      - name: Build the test runner
-        run: pushd pkg/test/runner; ./build.sh; popd
       - name: Install the latest buildkit release
         run: |
           BUILDKIT_URL="$(curl -sL https://api.github.com/repos/moby/buildkit/releases \

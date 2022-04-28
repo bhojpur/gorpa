@@ -1,4 +1,4 @@
-project_name: ara
+project_name: gorpa
 before:
   hooks:
     - go generate ./...
