@@ -18,7 +18,7 @@ builds:
   - -s -w
   - -X "github.com/bhojpur/gorpa/pkg/version.Version={{.Version}}-{{.ShortCommit}}"
   - -X "github.com/bhojpur/gorpa/pkg/version.BuildTime={{ time "2006-01-02 15:04:05 MST" }}"
-  - -X "github.com/bhojpur/gorpa/pkg/version.BuildCommit={{ .FullCommit }}
+  - -X "github.com/bhojpur/gorpa/pkg/version.BuildCommit={{ .FullCommit }}"
 archives:
 - id: gorpa
   files:
