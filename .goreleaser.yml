@@ -1,14 +1,30 @@
+project_name: ara
 before:
   hooks:
     - go generate ./...
+dist: release
+source:
+  enabled: true
+  name_template: '{{ .ProjectName }}-{{ .Tag }}-source'
+checksum:
+  name_template: '{{ .ProjectName }}-{{ .Tag }}-checksums.txt'
 builds:
 - id: gorpa
   env:
   - CGO_ENABLED=0
+  main: main.go
+  binary: gorpa
   ldflags:
-  - -s -w -X github.com/bhojpur/gorpa/pkg/gorpa.Version={{.Version}}-{{.ShortCommit}}
+  - -s -w
+  - -X "github.com/bhojpur/gorpa/pkg/version.Version={{.Version}}-{{.ShortCommit}}"
+  - -X "github.com/bhojpur/gorpa/pkg/version.BuildTime={{ time "2006-01-02 15:04:05 MST" }}"
+  - -X "github.com/bhojpur/gorpa/pkg/version.BuildCommit={{ .FullCommit }}
 archives:
 - id: gorpa
+  files:
+  - "none*"
+  format: binary # this removes the tar of the archives, leaving the binaries alone
+  name_template: gorpa-{{ .Tag }}-{{ .Os }}-{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}
   replacements:
     darwin: Darwin
     linux: Linux
@@ -16,8 +32,6 @@ archives:
     amd64: x86_64
   builds:
   - gorpa
-checksum:
-  name_template: 'checksums.txt'
 snapshot:
   name_template: "{{ .Tag }}-next"
 changelog:
@@ -28,6 +42,9 @@ changelog:
     - '^test:'
 release:
   prerelease: auto
+  header: |
+    Bhojpur GoRPA is an efficient Go-based Rapid Product Assembly software tool used
+    for validation, building, and packaging of different applications and/or services.
 dockers:
   - goos: linux
     goarch: amd64

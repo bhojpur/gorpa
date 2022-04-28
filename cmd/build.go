@@ -32,6 +32,7 @@ import (
 	"runtime"
 
 	gorpa "github.com/bhojpur/gorpa/pkg/engine"
+	"github.com/bhojpur/gorpa/pkg/version"
 	"github.com/gookit/color"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -249,7 +250,7 @@ func getBuildOpts(cmd *cobra.Command) ([]gorpa.BuildOption, *gorpa.FilesystemCac
 		log.Fatal(err)
 	}
 
-	log.Debugf("this is Bhojpur GoRPA version %s", gorpa.Version)
+	log.Debugf("Bhojpur GoRPA version %s", version.Version)
 
 	var planOutlet io.Writer
 	if plan, _ := cmd.Flags().GetString("dump-plan"); plan != "" {

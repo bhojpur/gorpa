@@ -37,6 +37,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bhojpur/gorpa/pkg/version"
 	"github.com/in-toto/in-toto-golang/in_toto"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/xerrors"
@@ -261,7 +262,7 @@ func (p *Package) produceSLSAEnvelope(buildctx *buildContext, subjects []in_toto
 	}
 
 	pred.Builder = in_toto.ProvenanceBuilder{
-		ID: fmt.Sprintf("%s:%s@sha256:%s", ProvenanceBuilderID, Version, buildctx.gorpaHash),
+		ID: fmt.Sprintf("%s:%s@sha256:%s", ProvenanceBuilderID, version.Version, buildctx.gorpaHash),
 	}
 	pred.Metadata = &in_toto.ProvenanceMetadata{
 		Completeness: in_toto.ProvenanceComplete{

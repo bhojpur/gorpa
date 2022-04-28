@@ -1,4 +1,14 @@
 {
+    "go.gopath": "/Volumes/Software/go",
+    "go.toolsEnvVars": {
+        "GOARCH":"amd64",
+        "GOOS":"linux",
+    },
+    "go.testEnvVars": {
+        "GOARCH":"amd64",
+        "GOOS":"linux",
+    },
+    "go.installDependenciesWhenBuilding": false,
     "go.lintTool": "golangci-lint",
     "yaml.schemas": {
         "https://json.schemastore.org/github-workflow.json": "file:///Volumes/Software/bhojpur/net/gorpa/.github/workflows/build.yaml"

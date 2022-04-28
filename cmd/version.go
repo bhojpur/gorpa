@@ -23,7 +23,7 @@ package cmd
 import (
 	"fmt"
 
-	gorpa "github.com/bhojpur/gorpa/pkg/engine"
+	stamping "github.com/bhojpur/gorpa/pkg/version"
 	"github.com/spf13/cobra"
 )
 
@@ -32,7 +32,7 @@ var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Prints the version of this Bhojpur GoRPA software build",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Printf(gorpa.Version)
+		fmt.Printf("Bhojpur GoRPA "+stamping.FullVersion())
 	},
 }
 

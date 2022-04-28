@@ -1,4 +1,4 @@
-package pkg
+package version
 
 // Copyright (c) 2018 Bhojpur Consulting Private Limited, India. All rights reserved.
 
@@ -20,18 +20,38 @@ package pkg
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+import (
+	"fmt"
+	"strings"
+)
+
 var (
-	BuildVersion     string
-	BuildGitRevision string
-	BuildStatus      string
-	BuildTag         string
-	BuildTime        string
+	// Version is the semver release name of this build
+	Version string = "developer"
+	// Commit is the commit hash this build was created from
+	Commit string
+	// Date is the time when this build was created
+	Date string
 
-	GoVersion string
-	GitBranch string
+	// GitCommit will be overwritten automatically by the build system
+	BuildTime string
+	// BuildCommit will be overwritten automatically by the build system
+	BuildCommit = "HEAD"
 )
 
-const (
-	// VERSION represent Bhojpur GoRPA - Build Framework version.
-	VERSION = "0.0.6"
-)
+// Print writes the version info to stdout
+func Print() {
+	fmt.Printf("Version:    %s\n", Version)
+	fmt.Printf("Commit:     %s\n", Commit)
+	fmt.Printf("Build Date: %s\n", Date)
+}
+
+// FullVersion formats the version to be printed
+func FullVersion() string {
+	return fmt.Sprintf("%s (%s, build %s)", Version, BuildTime, BuildCommit)
+}
+
+// RC checks if the Bhojpur Ara version is a release candidate or not
+func RC() bool {
+	return strings.Contains(Version, "rc")
+}
